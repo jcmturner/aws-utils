@@ -184,7 +184,7 @@ func usage() {
 	os.Exit(0)
 }
 
-func describeInstance(sess *session.Session, instID string) (output *ec2.DescribeInstancesOutput, err error) {
+func describeInstance(sess *session.Session, instID string) (*ec2.DescribeInstancesOutput, error) {
 	var input ec2.DescribeInstancesInput
 	input.SetInstanceIds([]string{instID})
 	ec2Svc := ec2.New(sess)
@@ -210,4 +210,5 @@ func getEBS(output *ec2.DescribeInstancesOutput) (l []string) {
 		s := fmt.Sprintf("%s:%s:%s:%v:%t", vol.DeviceName, vol.Ebs.VolumeId, vol.Ebs.Status, vol.Ebs.AttachTime, vol.Ebs.DeleteOnTermination)
 		l = append(l, s)
 	}
+	return
 }
