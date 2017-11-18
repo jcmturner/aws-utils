@@ -48,9 +48,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error getting instance identity document: %v\n", err)
 		os.Exit(1)
 	}
-	sess = session.Must(session.NewSession(&aws.Config{
+	sess = session.Must(session.NewSession((&aws.Config{
 		Region: aws.String(idoc.Region),
-	}))
+	}).WithCredentialsChainVerboseErrors(true)))
 
 	flag.Parse()
 
@@ -82,51 +82,35 @@ func main() {
 		l = append(l, idoc.PrivateIP)
 	case tags:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, getTags(d)...)
 	case vpcID:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, *d.Reservations[0].Instances[0].VpcId)
 	case subnetID:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, *d.Reservations[0].Instances[0].SubnetId)
 	case state:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, *d.Reservations[0].Instances[0].State.Name)
 	case securityGroups:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, getSGs(d)...)
 	case publicDNS:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, *d.Reservations[0].Instances[0].PublicDnsName)
 	case publicIP:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, *d.Reservations[0].Instances[0].PublicIpAddress)
 	case ebsVols:
 		d, err := describeInstance(sess, idoc.InstanceID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		}
+		checkErr(err)
 		l = append(l, getEBS(d)...)
 	default:
 		usage()
@@ -142,25 +126,25 @@ func main() {
 func usage() {
 	fmt.Printf(`
 	Usage: %s [information type]
-		%s		Show this instance's ID.
-		%s		Show the account ID in which this instance resides.
-		%s		Show the AWS region in which this instance resides.
-		%s		Show the availability zone in which this instance resides.
-		%s		Show the instance type.
-		%s		Show the instance's image ID.
-		%s		Show the instance architecture.
+		%s			Show this instance's ID.
+		%s			Show the account ID in which this instance resides.
+		%s			Show the AWS region in which this instance resides.
+		%s			Show the availability zone in which this instance resides.
+		%s			Show the instance type.
+		%s			Show the instance's image ID.
+		%s			Show the instance architecture.
 		%s		Show the instance's kernel ID.
-		%s		Show the instance's pending time.
+		%s			Show the instance's pending time.
 		%s		Show the instance's product codes.
 		%s		Show the instance's billing products.
-		%s		Show the instance's state.
-		%s 		Show the instance's tags (<key>:<value>)
-		%s		Show the instance's EBS volumes (<device name>:<volume id>:<status>:<attach time>:<delete on termination>)
-		%s		Show the instance's private IP
+		%s			Show the instance's state.
+		%s 			Show the instance's tags (<key>:<value>)
+		%s			Show the instance's EBS volumes (<device name>:<volume id>:<status>:<attach time>:<delete on termination>)
+		%s			Show the instance's private IP
 		%s		Show the instance's public IP
 		%s		Show the instance's public DNS name
-		%s		Show the instance's security groups (<group id>:<group name>)
-		%s		Show the instance's VPC ID
+		%s			Show the instance's security groups (<group id>:<group name>)
+		%s			Show the instance's VPC ID
 		%s		Show the instance's subnet ID
 
 	References:
@@ -182,6 +166,13 @@ func usage() {
 		githash, buildstamp,
 	)
 	os.Exit(0)
+}
+
+func checkErr(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Ensure the EC2 instance has an IAM role attached that can perform ec2:DescribeInstances.\nError detail: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func describeInstance(sess *session.Session, instID string) (*ec2.DescribeInstancesOutput, error) {
